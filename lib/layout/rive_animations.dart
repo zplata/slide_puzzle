@@ -153,12 +153,6 @@ class _StaticBirdAnimation extends State<StaticBirdAnimation> {
       ),
     );
   }
-
-  // @override
-  // Widget build(BuildContext context) {
-  //   return RiveAnimation.asset('assets/rive/birb.riv',
-  //       artboard: 'birb', onInit: _onRiveInit);
-  // }
 }
 
 // ignore: public_member_api_docs
