@@ -77,7 +77,6 @@ class _Puzzle extends StatelessWidget {
       builder: (context, constraints) {
         return Stack(
           children: [
-            theme.layoutDelegate.backgroundBuilder(state),
             SingleChildScrollView(
               child: ConstrainedBox(
                 constraints: BoxConstraints(
@@ -95,6 +94,7 @@ class _Puzzle extends StatelessWidget {
                 ),
               ),
             ),
+            theme.layoutDelegate.backgroundBuilder(state),
           ],
         );
       },

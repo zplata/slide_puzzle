@@ -1,13 +1,17 @@
+// ignore_for_file: public_member_api_docs
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gap/gap.dart';
 import 'package:very_good_slide_puzzle/colors/colors.dart';
 import 'package:very_good_slide_puzzle/l10n/l10n.dart';
 import 'package:very_good_slide_puzzle/layout/layout.dart';
+import 'package:very_good_slide_puzzle/layout/rive_animations.dart';
 import 'package:very_good_slide_puzzle/models/models.dart';
 import 'package:very_good_slide_puzzle/puzzle/puzzle.dart';
 import 'package:very_good_slide_puzzle/theme/theme.dart';
 import 'package:very_good_slide_puzzle/typography/typography.dart';
+import 'package:rive/rive.dart';
 
 /// {@template simple_puzzle_layout_delegate}
 /// A delegate for computing the layout of the puzzle UI
@@ -57,31 +61,22 @@ class SimplePuzzleLayoutDelegate extends PuzzleLayoutDelegate {
       right: 0,
       bottom: 0,
       child: ResponsiveLayoutBuilder(
-        small: (_, __) => SizedBox(
+        small: (_, __) => const SizedBox(
           width: 184,
           height: 118,
-          child: Image.asset(
-            'assets/images/simple_dash_small.png',
-            key: const Key('simple_puzzle_dash_small'),
-          ),
+          child: StaticBirdAnimation(),
         ),
-        medium: (_, __) => SizedBox(
+        medium: (_, __) => const SizedBox(
           width: 380.44,
           height: 214,
-          child: Image.asset(
-            'assets/images/simple_dash_medium.png',
-            key: const Key('simple_puzzle_dash_medium'),
-          ),
+          child: StaticBirdAnimation(),
         ),
-        large: (_, __) => Padding(
-          padding: const EdgeInsets.only(bottom: 53),
+        large: (_, __) => const Padding(
+          padding: EdgeInsets.only(bottom: 53),
           child: SizedBox(
             width: 568.99,
             height: 320,
-            child: Image.asset(
-              'assets/images/simple_dash_large.png',
-              key: const Key('simple_puzzle_dash_large'),
-            ),
+            child: StaticBirdAnimation(),
           ),
         ),
       ),
@@ -90,6 +85,10 @@ class SimplePuzzleLayoutDelegate extends PuzzleLayoutDelegate {
 
   @override
   Widget boardBuilder(int size, List<Widget> tiles) {
+    const x = RiveAnimation.asset(
+      'assets/rive/birb.riv',
+      artboard: 'tileAnimate',
+    );
     return Column(
       children: [
         const ResponsiveGap(
@@ -117,10 +116,15 @@ class SimplePuzzleLayoutDelegate extends PuzzleLayoutDelegate {
           ),
           large: (_, __) => SizedBox.square(
             dimension: _BoardSize.large,
-            child: SimplePuzzleBoard(
-              key: const Key('simple_puzzle_board_large'),
-              size: size,
-              tiles: tiles,
+            child: Stack(
+              children: [
+                const PuzzleContainer(),
+                SimplePuzzleBoard(
+                  key: const Key('simple_puzzle_board_large'),
+                  size: size,
+                  tiles: tiles,
+                ),
+              ],
             ),
           ),
         ),
@@ -133,31 +137,19 @@ class SimplePuzzleLayoutDelegate extends PuzzleLayoutDelegate {
 
   @override
   Widget tileBuilder(Tile tile, PuzzleState state) {
-    return ResponsiveLayoutBuilder(
-      small: (_, __) => SimplePuzzleTile(
-        key: Key('simple_puzzle_tile_${tile.value}_small'),
-        tile: tile,
-        tileFontSize: _TileFontSize.small,
-        state: state,
-      ),
-      medium: (_, __) => SimplePuzzleTile(
-        key: Key('simple_puzzle_tile_${tile.value}_medium'),
-        tile: tile,
-        tileFontSize: _TileFontSize.medium,
-        state: state,
-      ),
-      large: (_, __) => SimplePuzzleTile(
-        key: Key('simple_puzzle_tile_${tile.value}_large'),
-        tile: tile,
-        tileFontSize: _TileFontSize.large,
-        state: state,
-      ),
+    return SimplePuzzleTile(
+      key: Key('simple_puzzle_tile_${tile.value}_large'),
+      tile: tile,
+      tileFontSize: _TileFontSize.large,
+      state: state,
     );
   }
 
   @override
   Widget whitespaceTileBuilder() {
-    return const SizedBox();
+    return const SizedBox(
+      child: WhitespaceBirdAnimation(),
+    );
   }
 
   @override
@@ -272,7 +264,7 @@ class SimplePuzzleBoard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GridView.count(
-      padding: EdgeInsets.zero,
+      padding: const EdgeInsets.all(16),
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       crossAxisCount: size,
@@ -294,7 +286,7 @@ abstract class _TileFontSize {
 /// the font size of [tileFontSize] based on the puzzle [state].
 /// {@endtemplate}
 @visibleForTesting
-class SimplePuzzleTile extends StatelessWidget {
+class SimplePuzzleTile extends StatefulWidget {
   /// {@macro simple_puzzle_tile}
   const SimplePuzzleTile({
     Key? key,
@@ -313,38 +305,69 @@ class SimplePuzzleTile extends StatelessWidget {
   final PuzzleState state;
 
   @override
-  Widget build(BuildContext context) {
-    final theme = context.select((ThemeBloc bloc) => bloc.state.theme);
+  State<SimplePuzzleTile> createState() => SimplePuzzleTileState();
+}
 
+// ignore: duplicate_ignore, duplicate_ignore
+class SimplePuzzleTileState extends State<SimplePuzzleTile> {
+  @override
+  void initState() {
+    super.initState();
+  }
+
+  bool _wasPressed = false;
+
+  void clickCallback(SMITrigger smiOffTrigger) {
+    smiOffTrigger.fire();
+    context.read<PuzzleBloc>().add(TileTapped(widget.tile));
+  }
+
+  // ignore: public_member_api_docs
+  void resetPressedCallback() {
+    setState(() {
+      _wasPressed = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return TextButton(
       style: TextButton.styleFrom(
         primary: PuzzleColors.white,
         textStyle: PuzzleTextStyle.headline2.copyWith(
-          fontSize: tileFontSize,
+          fontSize: widget.tileFontSize,
         ),
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(
-            Radius.circular(12),
-          ),
-        ),
+        padding: EdgeInsets.zero,
       ).copyWith(
-        foregroundColor: MaterialStateProperty.all(PuzzleColors.white),
-        backgroundColor: MaterialStateProperty.resolveWith<Color?>(
-          (states) {
-            if (tile.value == state.lastTappedTile?.value) {
-              return theme.pressedColor;
-            } else if (states.contains(MaterialState.hovered)) {
-              return theme.hoverColor;
-            } else {
-              return theme.defaultColor;
-            }
-          },
-        ),
+        foregroundColor: MaterialStateProperty.all(PuzzleColors.primary10),
       ),
-      onPressed: state.puzzleStatus == PuzzleStatus.incomplete
-          ? () => context.read<PuzzleBloc>().add(TileTapped(tile))
+      onPressed: widget.state.puzzleStatus == PuzzleStatus.incomplete
+          ? () {
+              setState(() {
+                _wasPressed = true;
+              });
+            }
           : null,
-      child: Text(tile.value.toString()),
+      child: Stack(
+        children: [
+          TileAnimation(
+            key: Key('puzzle_tile_large_tile_${widget.tile.value}'),
+            isCorrectPlace:
+                widget.tile.correctPosition == widget.tile.currentPosition,
+            wasPressed: _wasPressed,
+            clickCallback: clickCallback,
+            resetPressedCallback: resetPressedCallback,
+          ),
+          Visibility(
+            visible: _wasPressed == false,
+            child: Center(child: Text(widget.tile.value.toString())),
+          ),
+          if (widget.tile.correctPosition == widget.tile.currentPosition)
+            const StarAnimation()
+          else
+            const SizedBox.shrink(),
+        ],
+      ),
     );
   }
 }
